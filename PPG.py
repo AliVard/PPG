@@ -182,8 +182,8 @@ class Learner:
             self.PPG -= lr * grad
             if self.verbose:
                 print([min_f, fs/self.samples_cnt]) #, min_b])
-                print('grad:', np.square(grad).mean())
-                print('negative:', len(self.PPG[self.PPG<0]), ', above one:', len(self.PPG[self.PPG >= 1]))
+                # print('grad:', np.square(grad).mean())
+                # print('negative:', len(self.PPG[self.PPG<0]), ', above one:', len(self.PPG[self.PPG >= 1]))
             self.PPG[self.PPG < 0] = 0.05
             self.PPG[self.PPG >= 0.95] = 0.95
             # self.PPG *= np.triu(np.ones((self.n,self.n)), 1)
