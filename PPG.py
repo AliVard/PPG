@@ -56,17 +56,24 @@ def _insert_to_down(merged, PPG, i_u, up):
         return
 
     for i_d in range(i_u+1, after_ind):
+        if PPG[merged[i_u]][merged[i_d]] == 0:
+            break
         q_u, q_d = 0, 0
         
-        for k in range(i_d+1, after_ind):
-            q_d = q_d * (1. - PPG[merged[i_u]][merged[k]]) + PPG[merged[i_u]][merged[k]]
+#         for k in range(i_d+1, after_ind):
+#             q_d = q_d * (1. - PPG[merged[i_u]][merged[k]]) + PPG[merged[i_u]][merged[k]]
 
-        for k in range(i_u):
-            q_u = q_u * (1. - PPG[merged[k]][merged[i_d]]) + PPG[merged[k]][merged[i_d]]
+#         for k in range(i_u):
+#             q_u = q_u * (1. - PPG[merged[k]][merged[i_d]]) + PPG[merged[k]][merged[i_d]]
 
-        q = q_u + q_d - (q_u * q_d)
+#         q = q_u + q_d - (q_u * q_d)
+        q = (1./2**(1./np.sqrt(after_ind-i_d))) - 1./2
         q *= 1. - PPG[merged[i_u]][merged[i_d]]
-        if np.random.binomial(1, PPG[merged[i_u]][merged[i_d]] / (1. - q)) == 0:
+        
+        if q == 1:
+            break
+        sampling_prob = PPG[merged[i_u]][merged[i_d]] / (1. - q)
+        if sampling_prob < 0 or sampling_prob > 1 or np.random.binomial(1, sampling_prob) == 0:
             break
 
     # print('q_u:', q_u, 'q_d:', q_d, 'q:', q, 'p:', PPG[i_u][i_d])
@@ -113,21 +120,24 @@ def _PPG_sample(PPG):
 
 
 class Learner:
-    def __init__(self, PPG, samples_cnt, objective_ins, sorted_docs, dlr, intra, inter) -> None:
+    def __init__(self, PPG_mat, samples_cnt, objective_ins, sorted_docs, dlr, intra, inter) -> None:
         self.ref_permutation = sorted_docs
         self.dlr = dlr
         self.objective = objective_ins
         self.n = len(self.ref_permutation)
         self.samples_cnt = samples_cnt
-        self.PPG = PPG
-        if PPG is None:
-            PPG = 0.5 * np.triu(np.ones((self.n,self.n)), 1)
+        if PPG_mat is None:
+            PPG_mat = 0.5 * np.triu(np.ones((self.n,self.n)), 1)
 
         for i in range(self.n):
             for j in range(i+1, self.n):
                 if intra[self.ref_permutation[i]] == intra[self.ref_permutation[j]] \
                     or inter[self.ref_permutation[i]] != inter[self.ref_permutation[j]]:
-                    PPG[i,j] = 0
+                    PPG_mat[i,j] = 0
+        self.PPG = PPG_mat
+
+        self.intra = intra
+        self.inter = inter
 
 
     def _update_ref(self, new_ref):
@@ -146,21 +156,23 @@ class Learner:
         self.ref_permutation = self.ref_permutation[new_ref]
 
 
-    def fit(self, epochs, lr, verbose=False):
+    def fit(self, epochs, lr, verbose=0):
         self.verbose = verbose
 
         min_f = np.inf
         min_b = np.arange(self.n)
 
-        if self.verbose:
-            print(self.ref_permutation)
+        if self.verbose > 0:
+            print(self.ref_permutation, 'inter:', self.inter, 'intra:', self.intra)
 
+        min_changed_epoch = -1
         for epoch in range(epochs):
             grad = np.zeros_like(self.PPG)
             safe_PPG = np.copy(self.PPG)
-            safe_PPG[self.PPG == 0] = 2.
+            safe_PPG[self.PPG == 0] = -1
             inv = 1./safe_PPG
-            inv[inv==0.5] = 0
+            inv[inv<0] = 0
+            safe_PPG[self.PPG == 0] = 2
             inv2 = 1./(1. - safe_PPG)
             inv2[inv2<0] = 0
             fs = 0
@@ -168,19 +180,21 @@ class Learner:
             for s in range(self.samples_cnt):
                 # b = _sample(self.PPG)
                 b = _PPG_sample(self.PPG)
-                # print(b)
+                if self.verbose > 1:
+                    print(b, '->', self.ref_permutation[b])
                 f = self.objective.eval(self.ref_permutation[b])
                 if f < min_f:
                     min_f = f
                     min_b = b
                     min_changed = True
+                    min_changed_epoch = epoch
                 e = _get_edges(b)
                 fs += f
                 
                 grad += f * ((e*inv) - ((1.-e)*inv2))
             grad /= self.samples_cnt
             self.PPG -= lr * grad
-            if self.verbose:
+            if self.verbose > 0:
                 print([min_f, fs/self.samples_cnt]) #, min_b])
                 # print('grad:', np.square(grad).mean())
                 # print('negative:', len(self.PPG[self.PPG<0]), ', above one:', len(self.PPG[self.PPG >= 1]))
@@ -192,7 +206,10 @@ class Learner:
                 self._update_ref(min_b)
                 min_b = np.arange(self.n)
                 # print(self.PPG)
-                if self.verbose:
+                if self.verbose > 0:
                     print(self.ref_permutation)
+
+            if epoch - min_changed_epoch > 5:
+                break
 
         return self.ref_permutation[min_b]

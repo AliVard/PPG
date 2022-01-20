@@ -9,6 +9,8 @@ import torch
 from torch.distributions.distribution import Distribution
 from torch.distributions import constraints
 
+import numpy as np
+
 def to_z(logits, u=None):
     if u is not None:
         assert u.size() == logits.size()
@@ -69,11 +71,12 @@ def reinforce(fb, b, logits, **kwargs):
 
 
 class Learner:
-    def __init__(self, logits, samples_cnt, objective_ins) -> None:
+    def __init__(self, logits, samples_cnt, objective_ins, sessions_cnt) -> None:
         self.log_theta = torch.tensor(logits, requires_grad=True)
         self.objective = objective_ins
         self.n = len(logits)
         self.samples_cnt = samples_cnt
+        self.sessions_cnt = sessions_cnt
         
 
     def fit(self, epochs, lr, verbose):
@@ -87,12 +90,22 @@ class Learner:
                 u = torch.distributions.utils.clamp_probs(torch.rand_like(self.log_theta))
                 z = to_z(self.log_theta, u)
                 b = to_b(z)
-                f_b = self.objective.eval(b.detach())
+                f_b = self.objective.eval(b.detach().data.numpy())
+                if verbose > 1:
+                    print(b.detach().data.numpy(), f_b)
                 fbs += f_b / self.samples_cnt
                 d_log_thetas.append(reinforce(fb=f_b, b=b, logits=self.log_theta))
             d_log_thetas = torch.cat(d_log_thetas,0)
-            if verbose:
+            if verbose > 0:
                 print(fbs)
             self.log_theta.backward(d_log_thetas.mean(0))
             optim.step()
 
+        output = []
+        for i in range(self.sessions_cnt):
+            u = torch.distributions.utils.clamp_probs(torch.rand_like(self.log_theta))
+            z = to_z(self.log_theta, u)
+            b = to_b(z) + (i * self.n)
+            output.append(b)
+        return np.concatenate(output)
+            

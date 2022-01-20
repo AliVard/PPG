@@ -4,7 +4,7 @@ from Mmetrics import *
 
 
 class DTR():
-    def __init__(self, y_pred, g, dlr, exposure, method='query_ratio', eps = 1e-10) -> None:
+    def __init__(self, y_pred, g, dlr, exposure, method='batch_ratio', eps = 1e-10) -> None:
         self.exposure = exposure
         self.eps = eps
         self.y_pred = y_pred
@@ -80,7 +80,7 @@ class DTR():
         for qid in range(self.dlr.shape[0] - 1):
             s, e = self.dlr[qid:qid+2]
 
-            arg = sorted_docs[s:e]
+            arg = sorted_docs[s:e] - s
             # print(arg)
             qg = self.g[s:e][arg]
             qy = self.y_pred[s:e][arg]
@@ -96,10 +96,10 @@ class DTR():
                 ratios.append(0.)
             else:
                 ratios.append(agg_exposure[group] / agg_utility[group])
-        if ratios[0] * ratios[1] == 0:
+        if len(ratios) < 2 or ratios[0] * ratios[1] == 0:
             return 0
         DTR = ratios[0] / ratios[1] if ratios[0] > ratios[1] else ratios[1] / ratios[0]
-        return DTR
+        return DTR - 1.
 
 
 

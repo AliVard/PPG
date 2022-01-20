@@ -1,2 +1,7 @@
 
 *.pyc
+.ipynb_checkpoints/DTR-checkpoint.ipynb
+.ipynb_checkpoints/EEL-checkpoint.ipynb
+.ipynb_checkpoints/ranker-checkpoint.ipynb
+*.pkl
+*.out

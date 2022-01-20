@@ -18,12 +18,12 @@ def disc_target_exposure(y, exposure):
             te.append(np.mean(expo[sorted_y==g]))
     return np.array(te)
 
-def copy_sessions(y, g, sorted, sessions):
+def copy_sessions(y, g, sorted_docs, sessions):
     ys, gs, sorteds, dlrs = [], [], [], [0]
     for i in range(sessions):
         ys.append(y.copy())
         gs.append(g.copy())
-        sorteds.append((i*y.shape[0]) + sorted.copy())
+        sorteds.append((i*y.shape[0]) + sorted_docs.copy())
         dlrs.append((i+1)*y.shape[0])
     return np.concatenate(ys), np.concatenate(gs), np.concatenate(sorteds), np.array(dlrs)
 
@@ -37,6 +37,8 @@ class EEL:
         self.groups = np.unique(g)
         self.dlr = dlr
         self.target_exp = self._compute_target_exposure()
+#         print(self.g)
+#         print(self.target_exp)
 
     def get_info(self, sorted_docs):
         return [self.y_pred[sorted_docs], self.g[sorted_docs]]
@@ -48,6 +50,7 @@ class EEL:
 
         for qid in range(self.dlr.shape[0] - 1):
             s, e = self.dlr[qid:qid+2]
+#             print('target', s, e)
             qg = self.g[s:e]
             disc_y = linspan(self.y_pred[s:e], self.grade_levels)
             level_target_exposure = disc_target_exposure(disc_y, self.exposure)
@@ -66,7 +69,7 @@ class EEL:
 
         for qid in range(self.dlr.shape[0] - 1):
             s, e = self.dlr[qid:qid+2]
-
+#             print('expected', s, e)
             arg = sorted_docs[s:e] - s
             # print(arg)
             qg = self.g[s:e][arg]
@@ -84,4 +87,16 @@ class EEL:
         delta = []
         for group in self.groups:
             delta.append(exp[group] - self.target_exp[group])
+#         print(delta)
         return np.square(np.array(delta)).sum()
+
+    def eval_detailed(self, sorted_docs):
+        exp = self._expected_exposure(sorted_docs)
+        tr, ex = [], []
+        for group in self.groups:
+            ex.append(exp[group])
+            tr.append(self.target_exp[group])
+        ex = np.array(ex)
+        tr = np.array(tr)
+        
+        return np.square(ex-tr).sum(), np.square(ex).sum(), np.dot(ex,tr).sum()
