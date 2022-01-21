@@ -18,18 +18,25 @@ import EEL
 import PPG
 import PL
 
-ds2020, _ = datautil.load_data(2020, verbose=False)
-ds2019, _ = datautil.load_data(2019, verbose=False)
+def df2ds(df_path):
+    with open(df_path, 'rb') as f:
+        df = pickle.load(f)
+    ds = df.to_dict(orient='list')
+    for k in ds:
+        ds[k] = np.array(ds[k])
+    ds['dlr'] = np.concatenate([np.zeros(1), np.where(np.diff(ds['qid'])==1)[0]+1, np.array([ds['qid'].shape[0]])]).astype(int)
+    return type('ltr', (object,), ds)
 
-ltrmodel = LTR.MSE_model(layers=[ds2020.trfm.shape[1], 256, 256, 1], lr=0.001, optimizer=torch.optim.Adam, dropout=0.1)
-ltrmodel.fit(ds2020, epochs=10, batch_size=100, verbose=False)
-y_pred2020 = ltrmodel.predict(ds2020.tefm, ds2020.tedlr)
-print('LTR performance ndcg@10 for 2020:', LTRMetrics(ds2020.telv,np.diff(ds2020.tedlr),y_pred2020).NDCG(10))
 
-ltrmodel = LTR.MSE_model(layers=[ds2019.trfm.shape[1], 256, 256, 1], lr=0.001, optimizer=torch.optim.Adam, dropout=0.1)
-ltrmodel.fit(ds2019, epochs=10, batch_size=100, verbose=False)
-y_pred2019 = ltrmodel.predict(ds2019.tefm, ds2019.tedlr)
-print('LTR performance ndcg@10 for 2019:', LTRMetrics(ds2019.telv,np.diff(ds2019.tedlr),y_pred2019).NDCG(10))
+def dict2ds(df_path):
+    with open(df_path, 'rb') as f:
+        ds = pickle.load(f)
+    return type('ltr', (object,), ds)
+
+ds2019 = df2ds('LTR2019.df')
+ds2020 = df2ds('LTR2020.df')
+sds2019 = dict2ds('s_LTR2019.df')
+sds2020 = dict2ds('s_LTR2020.df')
 
 epochs = 50
 
@@ -49,24 +56,19 @@ if len(sys.argv) > 3:
     if sys.argv[3] == 'intra':
         intra = True
         suffix='intra_'
-        
-        
-samples_cnt=32
-if len(sys.argv) > 4:
-    samples_cnt = eval(sys.argv[4])
 
     
 sessions_cnt=20
-if len(sys.argv) > 5:
-    sessions_cnt = eval(sys.argv[5])
+if len(sys.argv) > 4:
+    sessions_cnt = eval(sys.argv[4])
 
         
-suffix += f'{alg}_{samples_cnt}_{sessions_cnt}'
+suffix += f'{alg}_{sessions_cnt}'
 
 
 
-exposure2020 = np.array([1./np.log2(2+i) for i in range(1,np.diff(ds2020.tedlr).max()+2)])
-exposure2019 = np.array([1./np.log2(2+i) for i in range(1,np.diff(ds2019.tedlr).max()+2)])
+exposure2020 = np.array([1./np.log2(2+i) for i in range(1,np.diff(ds2020.dlr).max()+2)])
+exposure2019 = np.array([1./np.log2(2+i) for i in range(1,np.diff(ds2019.dlr).max()+2)])
 
 
 def learn_one_PPG(metric, qid, verbose, y_pred, g, dlr, epochs, lr, exposure, grade_levels, samples_cnt, sessions_cnt):
@@ -127,36 +129,87 @@ def learn_all_PL(metric, y_pred, g, dlr, epochs, lr, exposure, grade_levels, sam
     return sorted_docs
 
 
+
+def estimated_evaluate_one(metric, qid, y_pred, g, dlr, output_permutation, exposure, sessions_cnt):
+    s, e = dlr[qid:qid+2]
+    permutation = output_permutation[qid]
+    lv_s, g_s, sorted_docs_s, dlr_s = \
+        EEL.copy_sessions(y=y_pred[s:e], g=g[s:e], sorted_docs=y_pred[s:e].argsort()[::-1], sessions=sessions_cnt)
+    
+    
+    if metric == 'EEL':
+        objective_ins = EEL.EEL(y_pred = lv_s, g = g_s, dlr = dlr_s, exposure=exposure, grade_levels = 2)
+    else:
+        objective_ins = DTR.DTR(y_pred = lv_s, g = g_s, dlr = dlr_s, exposure=exposure)
+        
+    return objective_ins.eval(permutation)
+ 
+def estimated_evaluate_all(metric, y_pred, g, dlr, output_permutation, exposure, sessions_cnt):
+    eel_res = []
+    for qid in range(dlr.shape[0] - 1):
+        s,e = dlr[qid:qid+2]
+        if len(np.unique(g[s:e])) == 1:
+            continue
+        eel = estimated_evaluate_one(metric, qid, y_pred, g, dlr, output_permutation, exposure, sessions_cnt)
+        eel_res.append(eel)
+        
+    return np.array(eel_res).mean()
+
+
 learn_fn = eval(f'learn_all_{alg}')
 
 res = {}
 
-for learning_rate in ['0.01', '0.1', '0.5']:
-    res[f'2020_{learning_rate}'] = \
-        learn_fn(metric, y_pred2020, ds2020.teg, ds2020.tedlr, epochs, eval(learning_rate), exposure=exposure2020,
+def find_best(y_pred, sds, exposure, sessions_cnt):
+    best_lr = 0
+    best_samples_cnt = 0
+    best_fairness = np.inf
+
+    for learning_rate in ['0.01', '0.1']:
+        for samples_cnt in [4,8,16,32]:
+            output_permutation = learn_fn(metric, y_pred, sds.g, sds.dlr, 
+                                          epochs, eval(learning_rate), exposure=exposure,
+                                          grade_levels=5, samples_cnt=samples_cnt, sessions_cnt=sessions_cnt)
+            fairness = estimated_evaluate_all(metric, y_pred, sds.g, sds.dlr, 
+                                              output_permutation, exposure, sessions_cnt)
+            if fairness < best_fairness:
+                best_lr = learning_rate
+                best_samples_cnt = samples_cnt
+                best_fairness = fairness
+        return best_lr, best_samples_cnt
+
+for run_i in range(32):
+    learning_rate, samples_cnt = find_best(sds2020.y_pred, sds2020, exposure2020, sessions_cnt)
+    res[f'2020_{learning_rate}_{samples_cnt}_{run_i}'] = \
+        learn_fn(metric, ds2020.y_pred, ds2020.g, ds2020.dlr, epochs, eval(learning_rate), exposure=exposure2020,
         grade_levels=5, samples_cnt=samples_cnt, sessions_cnt=sessions_cnt)
 
-    with open(f'/ivi/ilps/personal/avardas/_data/PPG/{suffix}_{metric}_results.pkl', 'wb') as f:
+    with open(f'/ivi/ilps/personal/avardas/_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
         pickle.dump(res, f)
 
-    res[f'2019_{learning_rate}'] = \
-        learn_fn(metric, y_pred2019, ds2019.teg, ds2019.tedlr, epochs, eval(learning_rate), exposure=exposure2019,
+
+
+    learning_rate, samples_cnt = find_best(sds2019.y_pred, sds2019, exposure2019, sessions_cnt)
+    res[f'2019_{learning_rate}_{samples_cnt}_{run_i}'] = \
+        learn_fn(metric, ds2019.y_pred, ds2019.g, ds2019.dlr, epochs, eval(learning_rate), exposure=exposure2019,
         grade_levels=5, samples_cnt=samples_cnt, sessions_cnt=sessions_cnt)
-    
-    with open(f'/ivi/ilps/personal/avardas/_data/PPG/{suffix}_{metric}_results.pkl', 'wb') as f:
+
+    with open(f'/ivi/ilps/personal/avardas/_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
         pickle.dump(res, f)
-    
-#     res[f'lv_2020_{learning_rate}'] = \
-#         learn_fn(ds2020.telv, ds2020.teg, ds2020.tedlr, epochs, eval(learning_rate), exposure=exposure2020,
-#         grade_levels=2, samples_cnt=samples_cnt, sessions_cnt=sessions_cnt)
 
-#     with open(f'{suffix}_EEL_results.pkl', 'wb') as f:
-#         pickle.dump(res, f)
 
-#     res[f'lv_2019_{learning_rate}'] = \
-#         learn_fn(ds2019.telv, ds2019.teg, ds2019.tedlr, epochs, eval(learning_rate), exposure=exposure2019,
-#         grade_levels=2, samples_cnt=samples_cnt, sessions_cnt=sessions_cnt)
-    
-    
-#     with open(f'{suffix}_EEL_results.pkl', 'wb') as f:
-#         pickle.dump(res, f)
+    learning_rate, samples_cnt = find_best(sds2020.lv, sds2020, exposure2020, sessions_cnt)
+    res[f'lv_2020_{learning_rate}_{samples_cnt}_{run_i}'] = \
+        learn_fn(metric, ds2020.lv, ds2020.g, ds2020.dlr, epochs, eval(learning_rate), exposure=exposure2020,
+        grade_levels=5, samples_cnt=samples_cnt, sessions_cnt=sessions_cnt)
+
+    with open(f'/ivi/ilps/personal/avardas/_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
+        pickle.dump(res, f)
+
+
+    res[f'lv_2019_{learning_rate}_{samples_cnt}_{run_i}'] = \
+        learn_fn(metric, ds2019.lv, ds2019.g, ds2019.dlr, epochs, eval(learning_rate), exposure=exposure2019,
+        grade_levels=5, samples_cnt=samples_cnt, sessions_cnt=sessions_cnt)
+
+    with open(f'/ivi/ilps/personal/avardas/_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
+        pickle.dump(res, f)

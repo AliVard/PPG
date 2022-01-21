@@ -60,14 +60,18 @@ def _insert_to_down(merged, PPG, i_u, up):
             break
         q_u, q_d = 0, 0
         
-#         for k in range(i_d+1, after_ind):
-#             q_d = q_d * (1. - PPG[merged[i_u]][merged[k]]) + PPG[merged[i_u]][merged[k]]
+        for k in range(i_d+1, after_ind):
+            q_d = q_d * (1. - PPG[merged[i_u]][merged[k]]) + PPG[merged[i_u]][merged[k]]
 
-#         for k in range(i_u):
-#             q_u = q_u * (1. - PPG[merged[k]][merged[i_d]]) + PPG[merged[k]][merged[i_d]]
+        for k in range(i_u):
+            q_u = q_u * (1. - PPG[merged[k]][merged[i_d]]) + PPG[merged[k]][merged[i_d]]
 
-#         q = q_u + q_d - (q_u * q_d)
-        q = (1./2**(1./np.sqrt(after_ind-i_d))) - 1./2
+#         q_d = 2 ** (after_ind - i_d - 1)
+#         q_d = 0.9 * (q_d - 1.) / q_d
+#         q_u = 2 ** (i_u)
+#         q_u = 0.9 * (q_u - 1.) / q_u
+        q = q_u + q_d - (q_u * q_d)
+
         q *= 1. - PPG[merged[i_u]][merged[i_d]]
         
         if q == 1:
@@ -113,11 +117,17 @@ def _PPG_sample(PPG):
         return np.array([0,1])
     up = _PPG_sample(PPG[:mid,:][:,:mid])
     down = _PPG_sample(PPG[mid:,:][:,mid:])
-    mat = _PPG_merge(up, down, PPG)
+    merged = _PPG_merge(up, down, PPG)
     # print('PPG:', PPG)
     # print('mat:', mat)
-    return mat
+    return merged
 
+def _PPG_sample_sessions(PPG, dlr):
+    sampled = []
+    for qid in range(dlr.shape[0]-1):
+        s, e = dlr[qid:qid+2]
+        sampled.append(_PPG_sample(PPG[s:e,:][:,s:e])+s)
+    return np.concatenate(sampled)
 
 class Learner:
     def __init__(self, PPG_mat, samples_cnt, objective_ins, sorted_docs, dlr, intra, inter) -> None:
@@ -179,7 +189,8 @@ class Learner:
             min_changed = False
             for s in range(self.samples_cnt):
                 # b = _sample(self.PPG)
-                b = _PPG_sample(self.PPG)
+#                 b = _PPG_sample(self.PPG)
+                b = _PPG_sample_sessions(self.PPG, self.dlr)
                 if self.verbose > 1:
                     print(b, '->', self.ref_permutation[b])
                 f = self.objective.eval(self.ref_permutation[b])
@@ -209,7 +220,7 @@ class Learner:
                 if self.verbose > 0:
                     print(self.ref_permutation)
 
-            if epoch - min_changed_epoch > 5:
+            if epoch - min_changed_epoch > 20:
                 break
 
         return self.ref_permutation[min_b]
