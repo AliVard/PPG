@@ -60,11 +60,11 @@ def _insert_to_down(merged, PPG, i_u, up):
             break
         q_u, q_d = 0, 0
         
-        for k in range(i_d+1, after_ind):
-            q_d = q_d * (1. - PPG[merged[i_u]][merged[k]]) + PPG[merged[i_u]][merged[k]]
-
-        for k in range(i_u):
-            q_u = q_u * (1. - PPG[merged[k]][merged[i_d]]) + PPG[merged[k]][merged[i_d]]
+#        for k in range(i_d+1, after_ind):
+#            q_d = q_d * (1. - PPG[merged[i_u]][merged[k]]) + PPG[merged[i_u]][merged[k]]
+#
+#        for k in range(i_u):
+#            q_u = q_u * (1. - PPG[merged[k]][merged[i_d]]) + PPG[merged[k]][merged[i_d]]
 
 #         q_d = 2 ** (after_ind - i_d - 1)
 #         q_d = 0.9 * (q_d - 1.) / q_d
@@ -73,7 +73,7 @@ def _insert_to_down(merged, PPG, i_u, up):
         q = q_u + q_d - (q_u * q_d)
 
         q *= 1. - PPG[merged[i_u]][merged[i_d]]
-        
+	        
         if q == 1:
             break
         sampling_prob = PPG[merged[i_u]][merged[i_d]] / (1. - q)
@@ -129,6 +129,23 @@ def _PPG_sample_sessions(PPG, dlr):
         sampled.append(_PPG_sample(PPG[s:e,:][:,s:e])+s)
     return np.concatenate(sampled)
 
+def each_session_performance(objective, ref_perm, b, dlr, f):
+    min_qid = -1
+    for qid in range(dlr.shape[0] - 1):
+        s, e = dlr[qid:qid+2]
+        f2 = objective.eval(ref_perm[b][s:e]-s)
+        if f2 < f:
+            f = f2
+            min_qid = qid
+    if min_qid >= 0:
+        s, e = dlr[min_qid:min_qid+2]
+        min_b = b[s:e] - s
+        for qid in range(dlr.shape[0] - 1):
+            s, e = dlr[qid:qid+2]
+            b[s:e] = min_b + s
+    return f
+            
+
 class Learner:
     def __init__(self, PPG_mat, samples_cnt, objective_ins, sorted_docs, dlr, intra, inter) -> None:
         self.ref_permutation = sorted_docs
@@ -162,6 +179,9 @@ class Learner:
 
         # print('before permutations:', self.PPG)
         self.PPG = self.PPG[new_ref,:][:,new_ref]
+        self.PPG += self.PPG.T
+        self.PPG *= np.triu(np.ones((self.n,self.n)), 1)
+        
 
         self.ref_permutation = self.ref_permutation[new_ref]
 
@@ -195,8 +215,9 @@ class Learner:
                     print(b, '->', self.ref_permutation[b])
                 f = self.objective.eval(self.ref_permutation[b])
                 if f < min_f:
-                    min_f = f
                     min_b = b
+#                     min_f = each_session_performance(self.objective, self.ref_permutation, min_b, self.dlr, f)
+                    min_f = f
                     min_changed = True
                     min_changed_epoch = epoch
                 e = _get_edges(b)
@@ -206,7 +227,7 @@ class Learner:
             grad /= self.samples_cnt
             self.PPG -= lr * grad
             if self.verbose > 0:
-                print([min_f, fs/self.samples_cnt]) #, min_b])
+                print('min_f:', min_f, ', mean_f:', fs/self.samples_cnt) #, min_b])
                 # print('grad:', np.square(grad).mean())
                 # print('negative:', len(self.PPG[self.PPG<0]), ', above one:', len(self.PPG[self.PPG >= 1]))
             self.PPG[self.PPG < 0] = 0.05
@@ -216,9 +237,11 @@ class Learner:
             if min_changed:
                 self._update_ref(min_b)
                 min_b = np.arange(self.n)
-                # print(self.PPG)
                 if self.verbose > 0:
-                    print(self.ref_permutation)
+                    print('new ref permutation:\n',self.ref_permutation)
+                    print('intra:\n', self.intra[self.ref_permutation])
+                if self.verbose > 2:
+                    print(self.PPG)
 
             if epoch - min_changed_epoch > 20:
                 break
