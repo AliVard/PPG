@@ -184,7 +184,7 @@ for run_i in range(32):
         learn_fn(metric, ds2020.y_pred, ds2020.g, ds2020.dlr, epochs, eval(learning_rate), exposure=exposure2020,
         grade_levels=5, samples_cnt=samples_cnt, sessions_cnt=sessions_cnt)
 
-    with open(f'/ivi/ilps/personal/avardas/_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
+    with open(f'_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
         pickle.dump(res, f)
 
 
@@ -194,7 +194,7 @@ for run_i in range(32):
         learn_fn(metric, ds2019.y_pred, ds2019.g, ds2019.dlr, epochs, eval(learning_rate), exposure=exposure2019,
         grade_levels=5, samples_cnt=samples_cnt, sessions_cnt=sessions_cnt)
 
-    with open(f'/ivi/ilps/personal/avardas/_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
+    with open(f'_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
         pickle.dump(res, f)
 
 
@@ -203,7 +203,7 @@ for run_i in range(32):
         learn_fn(metric, ds2020.lv, ds2020.g, ds2020.dlr, epochs, eval(learning_rate), exposure=exposure2020,
         grade_levels=5, samples_cnt=samples_cnt, sessions_cnt=sessions_cnt)
 
-    with open(f'/ivi/ilps/personal/avardas/_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
+    with open(f'_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
         pickle.dump(res, f)
 
 
@@ -211,5 +211,5 @@ for run_i in range(32):
         learn_fn(metric, ds2019.lv, ds2019.g, ds2019.dlr, epochs, eval(learning_rate), exposure=exposure2019,
         grade_levels=5, samples_cnt=samples_cnt, sessions_cnt=sessions_cnt)
 
-    with open(f'/ivi/ilps/personal/avardas/_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
+    with open(f'_data/PPG/32/{suffix}_{metric}_results.pkl', 'wb') as f:
         pickle.dump(res, f)
