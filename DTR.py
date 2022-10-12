@@ -76,12 +76,14 @@ class DTR():
         for group in self.groups:
             agg_exposure[group] = 0
             agg_utility[group] = 0
+            
+#         print('len:', len(sorted_docs))
 
         for qid in range(self.dlr.shape[0] - 1):
             s, e = self.dlr[qid:qid+2]
 
             arg = sorted_docs[s:e] - s
-            # print(arg)
+#             print(arg)
             qg = self.g[s:e][arg]
             qy = self.y_pred[s:e][arg]
             

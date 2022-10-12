@@ -1,0 +1,8 @@
+learn_lv.py PPG DTR intra 2 10
+learn_lv.py PPG DTR nointra 2 10
+learn_lv.py PPG DTR intra 4 10
+learn_lv.py PPG DTR nointra 4 10
+learn_lv.py PPG DTR intra 8 10
+learn_lv.py PPG DTR nointra 8 10
+learn_lv.py PPG DTR intra 16 10
+learn_lv.py PPG DTR nointra 16 10

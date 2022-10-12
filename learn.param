@@ -1,36 +1,48 @@
-learn.py PPG EEL intra 1
-learn.py PPG EEL nointra 1
-learn.py PL EEL nointra 1
-learn.py PPG EEL intra 2
-learn.py PPG EEL nointra 2
-learn.py PL EEL nointra 2
-learn.py PPG EEL intra 4
-learn.py PPG EEL nointra 4
-learn.py PL EEL nointra 4
-learn.py PPG EEL intra 8
-learn.py PPG EEL nointra 8
-learn.py PL EEL nointra 8
-learn.py PPG EEL intra 16
-learn.py PPG EEL nointra 16
-learn.py PL EEL nointra 16
-learn.py PPG EEL intra 32
-learn.py PPG EEL nointra 32
-learn.py PL EEL nointra 32
-learn.py PPG DTR intra 1
-learn.py PPG DTR nointra 1
-learn.py PL DTR nointra 1
-learn.py PPG DTR intra 2
-learn.py PPG DTR nointra 2
-learn.py PL DTR nointra 2
-learn.py PPG DTR intra 4
-learn.py PPG DTR nointra 4
-learn.py PL DTR nointra 4
-learn.py PPG DTR intra 8
-learn.py PPG DTR nointra 8
-learn.py PL DTR nointra 8
-learn.py PPG DTR intra 16
-learn.py PPG DTR nointra 16
-learn.py PL DTR nointra 16
-learn.py PPG DTR intra 32
-learn.py PPG DTR nointra 32
-learn.py PL DTR nointra 32
+learn-mslr.py PPG DTR intra 1 1
+learn-mslr.py PPG DTR nointra 1 1
+learn-mslr.py PPG DTR intra 2 1
+learn-mslr.py PPG DTR nointra 2 1
+learn-mslr.py PPG DTR intra 4 1
+learn-mslr.py PPG DTR nointra 4 1
+learn-mslr.py PPG EEL intra 1 1
+learn-mslr.py PPG EEL nointra 1 1
+learn-mslr.py PPG EEL intra 2 1
+learn-mslr.py PPG EEL nointra 2 1
+learn-mslr.py PPG EEL intra 4 1
+learn-mslr.py PPG EEL nointra 4 1
+learn-mslr.py PL DTR nointra 1 1
+learn-mslr.py PL DTR nointra 2 1
+learn-mslr.py PL DTR nointra 4 1
+learn-mslr.py PL DTR nointra 8 1
+learn-mslr.py PL DTR nointra 16 1
+learn-mslr.py PL DTR nointra 32 1
+learn-mslr.py PL EEL nointra 1 1
+learn-mslr.py PL EEL nointra 2 1
+learn-mslr.py PL EEL nointra 4 1
+learn-mslr.py PL EEL nointra 8 1
+learn-mslr.py PL EEL nointra 16 1
+learn-mslr.py PL EEL nointra 32 1
+learn-random.py PL DTR nointra 1 1
+learn-random.py PL DTR nointra 2 1
+learn-random.py PL DTR nointra 4 1
+learn-random.py PL DTR nointra 8 1
+learn-random.py PL DTR nointra 16 1
+learn-random.py PL DTR nointra 32 1
+learn-random.py PL EEL nointra 1 1
+learn-random.py PL EEL nointra 2 1
+learn-random.py PL EEL nointra 4 1
+learn-random.py PL EEL nointra 8 1
+learn-random.py PL EEL nointra 16 1
+learn-random.py PL EEL nointra 32 1
+learn-random.py ltroutput DTR nointra 1 1
+learn-random.py ltroutput DTR nointra 2 1
+learn-random.py ltroutput DTR nointra 4 1
+learn-random.py ltroutput DTR nointra 8 1
+learn-random.py ltroutput DTR nointra 16 1
+learn-random.py ltroutput DTR nointra 32 1
+learn-random.py ltroutput EEL nointra 1 1
+learn-random.py ltroutput EEL nointra 2 1
+learn-random.py ltroutput EEL nointra 4 1
+learn-random.py ltroutput EEL nointra 8 1
+learn-random.py ltroutput EEL nointra 16 1
+learn-random.py ltroutput EEL nointra 32 1

@@ -9,6 +9,8 @@ import torch
 from torch.distributions.distribution import Distribution
 from torch.distributions import constraints
 
+import EEL
+
 import numpy as np
 
 def to_z(logits, u=None):
@@ -72,7 +74,7 @@ def reinforce(fb, b, logits, **kwargs):
 
 class Learner:
     def __init__(self, logits, samples_cnt, objective_ins, sessions_cnt) -> None:
-        self.log_theta = torch.tensor(logits, requires_grad=True)
+        self.log_theta = torch.tensor(EEL.linspan(logits, 5), requires_grad=True)
         self.objective = objective_ins
         self.n = len(logits)
         self.samples_cnt = samples_cnt
